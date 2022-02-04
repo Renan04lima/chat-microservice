@@ -1,7 +1,10 @@
 {
-  "name": "serverless-http-api-typescript",
+  "name": "chat-microservice",
   "description": "",
   "version": "0.1.0",
+  "scripts": {
+    "deploy": "sls deploy && ./websocket-endpoint.sh"
+  },
   "dependencies": {
     "amazon-cognito-identity-js": "^5.2.6",
     "env-var": "^7.1.1"

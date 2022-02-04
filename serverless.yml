@@ -1,20 +1,68 @@
 frameworkVersion: '3'
 
 org: renan04lima
-service: template-sls
-app: template-sls-app
+app: chat-microservice
+service: chat-microservice-node
 
+custom:
+  sessionTTL: 600
+  stage: ${opt:stage, 'dev'}
+  region: ${self:provider.region}
 provider:
   name: aws
   runtime: nodejs14.x
+  region: us-east-1
+  stage: ${self:custom.stage}
+  websocketsApiName: chat-microservice
+  websocketsApiRouteSelectionExpression: $request.body.route
+  logs:
+    websocket:
+      level: ERROR
+  environment:
+    MESSAGES_TABLE: chat-messages-${opt:stage}
+    CONNECTIONS_TABLE: chat-connections-${opt:stage}
+    SESSION_TTL: ${self:custom.sessionTTL}
+    STAGE: ${opt:stage}
+    URL: { "Fn::Join" : ["", [" https://", { "Ref" : "ApiGatewayRestApi" }, ".execute-api.${self:custom.region}.amazonaws.com/${self:custom.stage}/" ] ]  }
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - "execute-api:ManageConnections"
+          Resource:
+            - "arn:aws:execute-api:*:*:**/@connections/*"
+        - Effect: 'Allow'
+          Action:
+            - 'dynamodb:*'
+          Resource:
+            - "Fn::GetAtt": [ MessagesTable, Arn ]
+            - "Fn::GetAtt": [ ConnectionsTable, Arn ]
 
 functions:
-  hello:
-    handler: handler.hello
+  onConnect:
+    handler: src/main/routes.index
     events:
-      - httpApi:
-          path: /
-          method: get
+      - websocket:
+          route: $connect
+  onDisconnect:
+    handler: src/main/routes.index
+    events:
+      - websocket:
+          route: $disconnect
+  defaultHandler:
+    handler: src/main/routes.index
+    events:
+        - websocket:
+              route: $default
+  chatMessage:
+    handler: src/main/routes.index
+    events:
+      - websocket:
+          route: message
+
+resources:
+  - ${file(./src/infra/resources/dynamodb.yml)}
 
 plugins:
   - serverless-plugin-typescript
