@@ -1,0 +1,21 @@
+frameworkVersion: '3'
+
+org: renan04lima
+service: template-sls
+app: template-sls-app
+
+provider:
+  name: aws
+  runtime: nodejs14.x
+
+functions:
+  hello:
+    handler: handler.hello
+    events:
+      - httpApi:
+          path: /
+          method: get
+
+plugins:
+  - serverless-plugin-typescript
+  - serverless-offline
